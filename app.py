@@ -13,6 +13,8 @@ from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 MODEL_ID = os.getenv("MODEL_ID", "Qwen/Qwen2.5-ASR-0.6B")
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 TORCH_DTYPE = torch.float16 if DEVICE == "cuda" else torch.float32
+HF_TOKEN = os.getenv("HF_TOKEN")
+MODEL_REVISION = os.getenv("MODEL_REVISION")
 CHUNK_SAMPLE_RATE = 16000
 CHUNK_WIDTH = 2  # int16
 CHUNK_CHANNELS = 1
@@ -25,9 +27,11 @@ class ASREngine:
             torch_dtype=TORCH_DTYPE,
             low_cpu_mem_usage=True,
             use_safetensors=True,
+            token=HF_TOKEN,
+            revision=MODEL_REVISION,
         )
         model.to(DEVICE)
-        processor = AutoProcessor.from_pretrained(model_id)
+        processor = AutoProcessor.from_pretrained(model_id, token=HF_TOKEN, revision=MODEL_REVISION)
         self.pipe = pipeline(
             task="automatic-speech-recognition",
             model=model,
@@ -81,23 +85,38 @@ class StreamState:
 
 app = FastAPI(title="Qwen ASR Streaming API")
 asr_engine: Optional[ASREngine] = None
+startup_error: Optional[str] = None
 
 
 @app.on_event("startup")
 def startup_event() -> None:
-    global asr_engine
-    asr_engine = ASREngine()
+    global asr_engine, startup_error
+    try:
+        asr_engine = ASREngine()
+        startup_error = None
+    except Exception as exc:
+        asr_engine = None
+        startup_error = str(exc)
 
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "model": MODEL_ID, "device": DEVICE}
+    if asr_engine is None:
+        return {
+            "status": "degraded",
+            "model": MODEL_ID,
+            "device": DEVICE,
+            "ready": False,
+            "error": startup_error,
+            "hint": "Set MODEL_ID to a valid public model or provide HF_TOKEN for private/gated repos.",
+        }
+    return {"status": "ok", "model": MODEL_ID, "device": DEVICE, "ready": True}
 
 
 @app.post("/v1/transcribe")
 async def transcribe_file(file: UploadFile = File(...)):
     if asr_engine is None:
-        return JSONResponse(status_code=503, content={"error": "ASR model not initialized"})
+        return JSONResponse(status_code=503, content={"error": "ASR model not initialized", "details": startup_error})
 
     data = await file.read()
     try:
@@ -112,7 +131,7 @@ async def transcribe_file(file: UploadFile = File(...)):
 async def stream_transcribe(websocket: WebSocket):
     await websocket.accept()
     if asr_engine is None:
-        await websocket.send_json({"type": "error", "message": "ASR model not initialized"})
+        await websocket.send_json({"type": "error", "message": "ASR model not initialized", "details": startup_error})
         await websocket.close(code=1011)
         return
 
