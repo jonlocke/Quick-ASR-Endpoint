@@ -5,9 +5,16 @@ IMAGE_NAME="${1:-qwen-asr-api:latest}"
 CONTAINER_NAME="${2:-qwen-asr-api}"
 PORT="${PORT:-8000}"
 MODEL_ID="${MODEL_ID:-Qwen/Qwen2.5-ASR-0.6B}"
+STARTUP_TIMEOUT="${STARTUP_TIMEOUT:-300}"
+POLL_INTERVAL="${POLL_INTERVAL:-2}"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "Error: docker is not installed or not on PATH."
+  exit 1
+fi
+
+if ! command -v curl >/dev/null 2>&1; then
+  echo "Error: curl is required by scripts/run.sh for health checks."
   exit 1
 fi
 
@@ -28,13 +35,28 @@ CONTAINER_ID="$(docker run -d \
   -p "${PORT}:8000" \
   "${IMAGE_NAME}")"
 
-sleep 2
-if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-  echo "Container started successfully: ${CONTAINER_NAME} (${CONTAINER_ID})"
-  echo "Health: http://localhost:${PORT}/health"
-  exit 0
-fi
+echo "Container created: ${CONTAINER_NAME} (${CONTAINER_ID})"
+echo "Waiting for health endpoint: http://localhost:${PORT}/health (timeout: ${STARTUP_TIMEOUT}s)"
 
-echo "Container '${CONTAINER_NAME}' exited immediately. Showing recent logs:"
+elapsed=0
+while [ "${elapsed}" -lt "${STARTUP_TIMEOUT}" ]; do
+  if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+    echo "Container '${CONTAINER_NAME}' exited before becoming healthy. Showing recent logs:"
+    docker logs --tail 100 "${CONTAINER_NAME}" || true
+    exit 1
+  fi
+
+  if curl -fsS "http://localhost:${PORT}/health" >/dev/null 2>&1; then
+    echo "Container is healthy: ${CONTAINER_NAME} (${CONTAINER_ID})"
+    echo "Health: http://localhost:${PORT}/health"
+    exit 0
+  fi
+
+  sleep "${POLL_INTERVAL}"
+  elapsed=$((elapsed + POLL_INTERVAL))
+done
+
+echo "Timed out waiting for health endpoint after ${STARTUP_TIMEOUT}s."
+echo "Container is still running, showing last 100 log lines for diagnostics:"
 docker logs --tail 100 "${CONTAINER_NAME}" || true
 exit 1

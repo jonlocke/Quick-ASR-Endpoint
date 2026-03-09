@@ -16,13 +16,15 @@ A Dockerized FastAPI + Uvicorn service for speech-to-text with **Qwen ASR 0.6B**
 
 ```bash
 ./scripts/run.sh qwen-asr-api:latest qwen-asr-api
-# script now verifies the container is still running and prints logs if startup fails
+# script waits for /health, fails with logs if startup crashes/times out
 ```
 
 Optional environment variables:
 
 - `PORT` (default: `8000`)
 - `MODEL_ID` (default: `Qwen/Qwen2.5-ASR-0.6B`)
+- `STARTUP_TIMEOUT` seconds to wait for `/health` (default: `300`)
+- `POLL_INTERVAL` seconds between health checks (default: `2`)
 
 ## 3) Health check
 
