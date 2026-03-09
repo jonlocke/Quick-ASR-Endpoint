@@ -103,6 +103,7 @@ asyncio.run(run())
 ## Notes
 
 - Streaming endpoint performs **incremental re-transcription** on accumulated audio for partial updates.
+- The Docker image includes `git` so `TRANSFORMERS_SPEC` values like `git+https://...` install correctly.
 - For GPU acceleration, run container with appropriate runtime (for example `--gpus all`) and CUDA-compatible base image.
 
 
