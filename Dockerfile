@@ -6,6 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 ARG TORCH_SPEC="torch==2.4.1"
 ARG TORCH_INDEX_URL=""
+ARG TRANSFORMERS_SPEC="git+https://github.com/huggingface/transformers.git"
 
 WORKDIR /app
 
@@ -21,6 +22,7 @@ RUN pip install --upgrade pip \
        else \
          pip install "${TORCH_SPEC}"; \
        fi \
+    && pip install "${TRANSFORMERS_SPEC}" \
     && pip install -r requirements.txt
 
 COPY app.py ./
