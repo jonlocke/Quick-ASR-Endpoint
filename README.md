@@ -99,3 +99,15 @@ asyncio.run(run())
 - The API process now stays up even if model loading fails during startup.
 - `GET /health` returns `status: degraded` and includes the model loading error when this happens.
 - Transcription endpoints return `503` with error details until the model is configured correctly.
+
+
+## Troubleshooting
+
+- If `/health` shows a model architecture error (for example unknown `qwen3_asr`), rebuild your image to pick up updated dependencies:
+
+```bash
+./scripts/build.sh qwen-asr-api:latest
+./scripts/run.sh qwen-asr-api:latest qwen-asr-api
+```
+
+- Ensure your upload path has no trailing space in the curl file argument, e.g. `-F "file=@../Quick-TTS-Endpoint/liz.wav"`.

@@ -29,9 +29,15 @@ class ASREngine:
             use_safetensors=True,
             token=HF_TOKEN,
             revision=MODEL_REVISION,
+            trust_remote_code=True,
         )
         model.to(DEVICE)
-        processor = AutoProcessor.from_pretrained(model_id, token=HF_TOKEN, revision=MODEL_REVISION)
+        processor = AutoProcessor.from_pretrained(
+            model_id,
+            token=HF_TOKEN,
+            revision=MODEL_REVISION,
+            trust_remote_code=True,
+        )
         self.pipe = pipeline(
             task="automatic-speech-recognition",
             model=model,
