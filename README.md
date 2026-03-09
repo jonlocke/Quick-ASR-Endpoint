@@ -10,7 +10,14 @@ A Dockerized FastAPI + Uvicorn service for speech-to-text with **Qwen ASR 0.6B**
 
 ```bash
 ./scripts/build.sh qwen-asr-api:latest
+# optional: override torch build at image build time
+# TORCH_SPEC="torch==2.4.1+cu118" TORCH_INDEX_URL="https://download.pytorch.org/whl/cu118" ./scripts/build.sh qwen-asr-api:latest
 ```
+
+### Build-time options
+
+- `TORCH_SPEC` torch package spec used during image build (default: `torch==2.4.1`)
+- `TORCH_INDEX_URL` optional pip index URL for torch wheels (for example `https://download.pytorch.org/whl/cu118`)
 
 ## 2) Run
 
@@ -107,6 +114,8 @@ asyncio.run(run())
 
 ```bash
 ./scripts/build.sh qwen-asr-api:latest
+# optional: override torch build at image build time
+# TORCH_SPEC="torch==2.4.1+cu118" TORCH_INDEX_URL="https://download.pytorch.org/whl/cu118" ./scripts/build.sh qwen-asr-api:latest
 ./scripts/run.sh qwen-asr-api:latest qwen-asr-api
 ```
 

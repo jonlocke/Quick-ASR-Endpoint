@@ -4,6 +4,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 
+ARG TORCH_SPEC="torch==2.4.1"
+ARG TORCH_INDEX_URL=""
+
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -12,7 +15,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt ./
-RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN pip install --upgrade pip \
+    && if [ -n "${TORCH_INDEX_URL}" ]; then \
+         pip install "${TORCH_SPEC}" --index-url "${TORCH_INDEX_URL}"; \
+       else \
+         pip install "${TORCH_SPEC}"; \
+       fi \
+    && pip install -r requirements.txt
 
 COPY app.py ./
 
