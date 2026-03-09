@@ -16,6 +16,7 @@ A Dockerized FastAPI + Uvicorn service for speech-to-text with **Qwen ASR 0.6B**
 
 ```bash
 ./scripts/run.sh qwen-asr-api:latest qwen-asr-api
+# script now verifies the container is still running and prints logs if startup fails
 ```
 
 Optional environment variables:
