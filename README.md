@@ -1,6 +1,6 @@
-# Quick ASR Endpoint (Qwen ASR 0.6B)
+# Quick ASR Endpoint (Qwen3 ASR 0.6B)
 
-A Dockerized FastAPI + Uvicorn service for speech-to-text with **Qwen ASR 0.6B**, including:
+A Dockerized FastAPI + Uvicorn service for speech-to-text with **Qwen3 ASR 0.6B**, including optional **vLLM backend** support:
 
 - `POST /v1/transcribe` for file-based transcription (`.wav`, 16-bit PCM)
 - `WS /v1/stream` for streaming transcription using PCM16LE chunks
@@ -21,6 +21,7 @@ A Dockerized FastAPI + Uvicorn service for speech-to-text with **Qwen ASR 0.6B**
 - `TORCH_SPEC` torch package spec used during image build (default: `torch==2.4.1`)
 - `TORCH_INDEX_URL` optional pip index URL for torch wheels (for example `https://download.pytorch.org/whl/cu118`)
 - `TRANSFORMERS_SPEC` transformers package spec used during image build (default: `git+https://github.com/huggingface/transformers.git`)
+- `QWEN_ASR_SPEC` qwen-asr package spec used during image build (default: `qwen-asr[vllm]`)
 
 ## 2) Run
 
@@ -33,6 +34,7 @@ Optional environment variables:
 
 - `PORT` (default: `8000`)
 - `MODEL_ID` (default: `Qwen/Qwen3-ASR-0.6B`)
+- `ASR_BACKEND` (`vllm` default, or `transformers`)
 - `HF_TOKEN` for private/gated Hugging Face models
 - `MODEL_REVISION` to pin a model revision/tag/commit
 - `STARTUP_TIMEOUT` seconds to wait for `/health` (default: `300`)
@@ -125,3 +127,16 @@ asyncio.run(run())
 ```
 
 - Ensure your upload path has no trailing space in the curl file argument, e.g. `-F "file=@../Quick-TTS-Endpoint/liz.wav"`.
+
+
+## Use vLLM backend
+
+The service now defaults to `ASR_BACKEND=vllm` and installs `qwen-asr[vllm]` in Docker builds.
+
+If needed, you can force Transformers backend at runtime:
+
+```bash
+ASR_BACKEND=transformers ./scripts/run.sh qwen-asr-api:latest qwen-asr-api
+```
+
+The `/health` response includes the active backend in both `ok` and `degraded` states.

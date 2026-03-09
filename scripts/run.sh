@@ -5,6 +5,7 @@ IMAGE_NAME="${1:-qwen-asr-api:latest}"
 CONTAINER_NAME="${2:-qwen-asr-api}"
 PORT="${PORT:-8000}"
 MODEL_ID="${MODEL_ID:-Qwen/Qwen3-ASR-0.6B}"
+ASR_BACKEND="${ASR_BACKEND:-vllm}"
 STARTUP_TIMEOUT="${STARTUP_TIMEOUT:-300}"
 POLL_INTERVAL="${POLL_INTERVAL:-2}"
 
@@ -32,6 +33,7 @@ echo "Starting ${CONTAINER_NAME} on port ${PORT}"
 CONTAINER_ID="$(docker run -d \
   --name "${CONTAINER_NAME}" \
   -e MODEL_ID="${MODEL_ID}" \
+  -e ASR_BACKEND="${ASR_BACKEND}" \
   -p "${PORT}:8000" \
   "${IMAGE_NAME}")"
 
