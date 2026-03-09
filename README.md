@@ -22,7 +22,7 @@ A Dockerized FastAPI + Uvicorn service for speech-to-text with **Qwen ASR 0.6B**
 Optional environment variables:
 
 - `PORT` (default: `8000`)
-- `MODEL_ID` (default: `Qwen/Qwen2.5-ASR-0.6B`)
+- `MODEL_ID` (default: `Qwen/Qwen3-ASR-0.6B`)
 - `HF_TOKEN` for private/gated Hugging Face models
 - `MODEL_REVISION` to pin a model revision/tag/commit
 - `STARTUP_TIMEOUT` seconds to wait for `/health` (default: `300`)

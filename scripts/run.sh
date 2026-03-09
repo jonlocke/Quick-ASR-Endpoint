@@ -4,7 +4,7 @@ set -euo pipefail
 IMAGE_NAME="${1:-qwen-asr-api:latest}"
 CONTAINER_NAME="${2:-qwen-asr-api}"
 PORT="${PORT:-8000}"
-MODEL_ID="${MODEL_ID:-Qwen/Qwen2.5-ASR-0.6B}"
+MODEL_ID="${MODEL_ID:-Qwen/Qwen3-ASR-0.6B}"
 STARTUP_TIMEOUT="${STARTUP_TIMEOUT:-300}"
 POLL_INTERVAL="${POLL_INTERVAL:-2}"
 
