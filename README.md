@@ -12,15 +12,15 @@ A Dockerized FastAPI + Uvicorn service for speech-to-text with **Qwen3 ASR 0.6B*
 ./scripts/build.sh quick-asr-endpoint:latest
 # optional: override torch build at image build time
 # TORCH_SPEC="torch==2.4.1+cu118" TORCH_INDEX_URL="https://download.pytorch.org/whl/cu118" ./scripts/build.sh quick-asr-endpoint:latest
-# optional: pin a specific transformers version instead of source
-# TRANSFORMERS_SPEC="transformers==4.57.1" ./scripts/build.sh quick-asr-endpoint:latest
+## optional: override transformers spec (default aligns with Qwen docs)
+# TRANSFORMERS_SPEC="transformers==4.57.6" ./scripts/build.sh quick-asr-endpoint:latest
 ```
 
 ### Build-time options
 
 - `TORCH_SPEC` torch package spec used during image build (default: `torch==2.4.1`)
 - `TORCH_INDEX_URL` optional pip index URL for torch wheels (for example `https://download.pytorch.org/whl/cu118`)
-- `TRANSFORMERS_SPEC` transformers package spec used during image build (default: `git+https://github.com/huggingface/transformers.git`)
+- `TRANSFORMERS_SPEC` transformers package spec used during image build (default: `transformers==4.57.6`)
 - `QWEN_ASR_SPEC` qwen-asr package spec used during image build (default: `qwen-asr[vllm]`)
 
 ## 2) Run
@@ -134,8 +134,8 @@ asyncio.run(run())
 ./scripts/build.sh quick-asr-endpoint:latest
 # optional: override torch build at image build time
 # TORCH_SPEC="torch==2.4.1+cu118" TORCH_INDEX_URL="https://download.pytorch.org/whl/cu118" ./scripts/build.sh quick-asr-endpoint:latest
-# optional: pin a specific transformers version instead of source
-# TRANSFORMERS_SPEC="transformers==4.57.1" ./scripts/build.sh quick-asr-endpoint:latest
+## optional: override transformers spec (default aligns with Qwen docs)
+# TRANSFORMERS_SPEC="transformers==4.57.6" ./scripts/build.sh quick-asr-endpoint:latest
 ./scripts/run.sh quick-asr-endpoint:latest quick-asr-endpoint
 ```
 

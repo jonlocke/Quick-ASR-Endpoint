@@ -4,7 +4,7 @@ set -euo pipefail
 IMAGE_NAME="${1:-quick-asr-endpoint:latest}"
 TORCH_SPEC="${TORCH_SPEC:-torch==2.4.1}"
 TORCH_INDEX_URL="${TORCH_INDEX_URL:-}"
-TRANSFORMERS_SPEC="${TRANSFORMERS_SPEC:-git+https://github.com/huggingface/transformers.git}"
+TRANSFORMERS_SPEC="${TRANSFORMERS_SPEC:-transformers==4.57.6}"
 QWEN_ASR_SPEC="${QWEN_ASR_SPEC:-qwen-asr[vllm]}"
 
 echo "Building Docker image: ${IMAGE_NAME}"

@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 ARG TORCH_SPEC="torch==2.4.1"
 ARG TORCH_INDEX_URL=""
-ARG TRANSFORMERS_SPEC="git+https://github.com/huggingface/transformers.git"
+ARG TRANSFORMERS_SPEC="transformers==4.57.6"
 ARG QWEN_ASR_SPEC="qwen-asr[vllm]"
 
 LABEL org.opencontainers.image.title="quick-asr-endpoint"
