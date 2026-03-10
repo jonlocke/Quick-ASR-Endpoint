@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-IMAGE_NAME="${1:-qwen-asr-api:latest}"
-CONTAINER_NAME="${2:-qwen-asr-api}"
+IMAGE_NAME="${1:-quick-asr-endpoint:latest}"
+CONTAINER_NAME="${2:-quick-asr-endpoint}"
 PORT="${PORT:-8000}"
 MODEL_ID="${MODEL_ID:-Qwen/Qwen3-ASR-0.6B}"
 ASR_BACKEND="${ASR_BACKEND:-auto}"
 STARTUP_TIMEOUT="${STARTUP_TIMEOUT:-300}"
 POLL_INTERVAL="${POLL_INTERVAL:-2}"
+EXPECTED_IMAGE_LABEL="quick-asr-endpoint"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "Error: docker is not installed or not on PATH."
@@ -26,6 +27,13 @@ fi
 
 if ! docker image inspect "${IMAGE_NAME}" >/dev/null 2>&1; then
   echo "Error: Docker image '${IMAGE_NAME}' not found. Build it first with ./scripts/build.sh ${IMAGE_NAME}."
+  exit 1
+fi
+
+IMAGE_LABEL="$(docker image inspect "${IMAGE_NAME}" --format '{{ index .Config.Labels "org.opencontainers.image.title" }}' 2>/dev/null || true)"
+if [ "${IMAGE_LABEL}" != "${EXPECTED_IMAGE_LABEL}" ]; then
+  echo "Error: image '${IMAGE_NAME}' does not look like Quick-ASR-Endpoint (label org.opencontainers.image.title=${IMAGE_LABEL:-<missing>})."
+  echo "Hint: rebuild with ./scripts/build.sh ${IMAGE_NAME} or use the correct image tag."
   exit 1
 fi
 

@@ -9,6 +9,8 @@ ARG TORCH_INDEX_URL=""
 ARG TRANSFORMERS_SPEC="git+https://github.com/huggingface/transformers.git"
 ARG QWEN_ASR_SPEC="qwen-asr[vllm]"
 
+LABEL org.opencontainers.image.title="quick-asr-endpoint"
+
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \

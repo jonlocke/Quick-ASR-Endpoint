@@ -9,11 +9,11 @@ A Dockerized FastAPI + Uvicorn service for speech-to-text with **Qwen3 ASR 0.6B*
 ## 1) Build
 
 ```bash
-./scripts/build.sh qwen-asr-api:latest
+./scripts/build.sh quick-asr-endpoint:latest
 # optional: override torch build at image build time
-# TORCH_SPEC="torch==2.4.1+cu118" TORCH_INDEX_URL="https://download.pytorch.org/whl/cu118" ./scripts/build.sh qwen-asr-api:latest
+# TORCH_SPEC="torch==2.4.1+cu118" TORCH_INDEX_URL="https://download.pytorch.org/whl/cu118" ./scripts/build.sh quick-asr-endpoint:latest
 # optional: pin a specific transformers version instead of source
-# TRANSFORMERS_SPEC="transformers==4.57.1" ./scripts/build.sh qwen-asr-api:latest
+# TRANSFORMERS_SPEC="transformers==4.57.1" ./scripts/build.sh quick-asr-endpoint:latest
 ```
 
 ### Build-time options
@@ -26,7 +26,7 @@ A Dockerized FastAPI + Uvicorn service for speech-to-text with **Qwen3 ASR 0.6B*
 ## 2) Run
 
 ```bash
-./scripts/run.sh qwen-asr-api:latest qwen-asr-api
+./scripts/run.sh quick-asr-endpoint:latest quick-asr-endpoint
 # script waits until /health reports ready=true, fails with logs if startup crashes/times out
 ```
 
@@ -97,7 +97,7 @@ asyncio.run(run())
 ## 6) Stop
 
 ```bash
-./scripts/stop.sh qwen-asr-api
+./scripts/stop.sh quick-asr-endpoint
 ```
 
 ## Notes
@@ -118,15 +118,17 @@ asyncio.run(run())
 
 ## Troubleshooting
 
+- `scripts/run.sh` validates the image label (`org.opencontainers.image.title=quick-asr-endpoint`) to avoid accidentally running a different application image under a reused tag.
+
 - If `/health` shows a model architecture error (for example unknown `qwen3_asr`), rebuild your image to pick up updated dependencies:
 
 ```bash
-./scripts/build.sh qwen-asr-api:latest
+./scripts/build.sh quick-asr-endpoint:latest
 # optional: override torch build at image build time
-# TORCH_SPEC="torch==2.4.1+cu118" TORCH_INDEX_URL="https://download.pytorch.org/whl/cu118" ./scripts/build.sh qwen-asr-api:latest
+# TORCH_SPEC="torch==2.4.1+cu118" TORCH_INDEX_URL="https://download.pytorch.org/whl/cu118" ./scripts/build.sh quick-asr-endpoint:latest
 # optional: pin a specific transformers version instead of source
-# TRANSFORMERS_SPEC="transformers==4.57.1" ./scripts/build.sh qwen-asr-api:latest
-./scripts/run.sh qwen-asr-api:latest qwen-asr-api
+# TRANSFORMERS_SPEC="transformers==4.57.1" ./scripts/build.sh quick-asr-endpoint:latest
+./scripts/run.sh quick-asr-endpoint:latest quick-asr-endpoint
 ```
 
 - Ensure your upload path has no trailing space in the curl file argument, e.g. `-F "file=@../Quick-TTS-Endpoint/liz.wav"`.
@@ -134,12 +136,12 @@ asyncio.run(run())
 
 ## Use vLLM backend
 
-The service now defaults to `ASR_BACKEND=vllm` and installs `qwen-asr[vllm]` in Docker builds.
+The service now defaults to `ASR_BACKEND=auto` (tries `vllm`, then `transformers`) and installs `qwen-asr[vllm]` in Docker builds.
 
 If needed, you can force Transformers backend at runtime:
 
 ```bash
-ASR_BACKEND=transformers ./scripts/run.sh qwen-asr-api:latest qwen-asr-api
+ASR_BACKEND=transformers ./scripts/run.sh quick-asr-endpoint:latest quick-asr-endpoint
 ```
 
 The `/health` response includes the active backend in both `ok` and `degraded` states.

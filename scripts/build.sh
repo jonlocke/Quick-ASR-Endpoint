@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-IMAGE_NAME="${1:-qwen-asr-api:latest}"
+IMAGE_NAME="${1:-quick-asr-endpoint:latest}"
 TORCH_SPEC="${TORCH_SPEC:-torch==2.4.1}"
 TORCH_INDEX_URL="${TORCH_INDEX_URL:-}"
 TRANSFORMERS_SPEC="${TRANSFORMERS_SPEC:-git+https://github.com/huggingface/transformers.git}"
