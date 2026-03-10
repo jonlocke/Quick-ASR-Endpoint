@@ -156,13 +156,31 @@ def _try_build(backend: str, model_id: str) -> BaseASREngine:
     raise ValueError("Unsupported ASR_BACKEND. Use 'auto', 'vllm', or 'transformers'.")
 
 
+def _vllm_usable() -> tuple[bool, str]:
+    if DEVICE != "cuda":
+        return False, "CUDA not available; skipping vllm backend."
+    if not torch.cuda.is_available():
+        return False, "torch.cuda.is_available() is false; skipping vllm backend."
+    return True, ""
+
+
 def create_engine(model_id: str = MODEL_ID, backend: str = ASR_BACKEND) -> tuple[BaseASREngine, str, Optional[str]]:
     if backend == "auto":
-        try:
-            return _try_build("vllm", model_id), "vllm", None
-        except Exception as vllm_exc:
-            engine = _try_build("transformers", model_id)
-            return engine, "transformers", f"vllm initialization failed, fell back to transformers: {vllm_exc}"
+        usable, reason = _vllm_usable()
+        if usable:
+            try:
+                return _try_build("vllm", model_id), "vllm", None
+            except Exception as vllm_exc:
+                engine = _try_build("transformers", model_id)
+                return engine, "transformers", f"vllm initialization failed, fell back to transformers: {vllm_exc}"
+
+        engine = _try_build("transformers", model_id)
+        return engine, "transformers", reason
+
+    if backend == "vllm":
+        usable, reason = _vllm_usable()
+        if not usable:
+            raise RuntimeError(reason + " Set ASR_BACKEND=transformers or enable GPU runtime.")
 
     return _try_build(backend, model_id), backend, None
 

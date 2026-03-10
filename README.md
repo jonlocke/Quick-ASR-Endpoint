@@ -34,7 +34,7 @@ Optional environment variables:
 
 - `PORT` (default: `8000`)
 - `MODEL_ID` (default: `Qwen/Qwen3-ASR-0.6B`)
-- `ASR_BACKEND` (`auto` default, tries `vllm` then falls back to `transformers`)
+- `ASR_BACKEND` (`auto` default, uses `transformers` when CUDA is unavailable; otherwise tries `vllm` first and falls back to `transformers` on init errors)
 - `HF_TOKEN` for private/gated Hugging Face models
 - `MODEL_REVISION` to pin a model revision/tag/commit
 - `STARTUP_TIMEOUT` seconds to wait for `/health` (default: `300`)
@@ -111,7 +111,8 @@ asyncio.run(run())
 
 - The API process now stays up even if model loading fails during startup.
 - `GET /health` returns `status: degraded` and includes the model loading error when this happens.
-- In `ASR_BACKEND=auto`, startup first attempts `vllm`; if it fails, it automatically falls back to `transformers` and exposes a warning in `/health`.
+- In `ASR_BACKEND=auto`, if CUDA is unavailable the service skips `vllm` and starts directly with `transformers` (warning shown in `/health`).
+- If CUDA is available, startup attempts `vllm` first; on init failure it falls back to `transformers` and exposes a warning in `/health`.
 - `/health` also includes `active_backend` to show which backend was actually initialized.
 - Transcription endpoints return `503` with error details until the model is configured correctly.
 
