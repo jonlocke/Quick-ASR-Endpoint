@@ -18,24 +18,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     libsndfile1 \
     git \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt ./
 RUN --mount=type=cache,target=/root/.cache/pip \
-    python -m pip install --upgrade pip \
+    python -m pip install --upgrade pip setuptools wheel \
     && if [ -n "${TORCH_INDEX_URL}" ]; then \
-         python -m pip install \
-           "${TORCH_SPEC}" \
-           "${QWEN_ASR_SPEC}" \
-           "${TRANSFORMERS_SPEC}" \
-           -r requirements.txt \
-           --index-url "${TORCH_INDEX_URL}"; \
+         python -m pip install "${TORCH_SPEC}" --index-url "${TORCH_INDEX_URL}"; \
+         python -m pip install --no-build-isolation "${QWEN_ASR_SPEC}" --index-url "${TORCH_INDEX_URL}"; \
+         python -m pip install "${TRANSFORMERS_SPEC}" -r requirements.txt --index-url "${TORCH_INDEX_URL}"; \
        else \
-         python -m pip install \
-           "${TORCH_SPEC}" \
-           "${QWEN_ASR_SPEC}" \
-           "${TRANSFORMERS_SPEC}" \
-           -r requirements.txt; \
+         python -m pip install "${TORCH_SPEC}"; \
+         python -m pip install --no-build-isolation "${QWEN_ASR_SPEC}"; \
+         python -m pip install "${TRANSFORMERS_SPEC}" -r requirements.txt; \
        fi
 
 COPY app.py ./
