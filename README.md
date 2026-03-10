@@ -27,6 +27,7 @@ A Dockerized FastAPI + Uvicorn service for speech-to-text with **Qwen3 ASR 0.6B*
 
 ```bash
 ./scripts/run.sh quick-asr-endpoint:latest quick-asr-endpoint
+# script uses --restart unless-stopped and mounts HF cache from host
 # script waits until /health reports ready=true, fails with logs if startup crashes/times out
 ```
 
@@ -40,6 +41,8 @@ Optional environment variables:
 - `STARTUP_TIMEOUT` seconds to wait for `/health` (default: `300`)
 - `POLL_INTERVAL` seconds between health checks (default: `2`)
 - `ENABLE_GPU` (`auto` default; uses `--gpus all` when `nvidia-smi` is present. Set `1` to force GPU, `0` to disable.)
+- `RESTART_POLICY` Docker restart policy (default: `unless-stopped`)
+- `HF_CACHE_DIR` host path mounted into `/root/.cache/huggingface` (default: `$HOME/.cache/huggingface/quick-asr-endpoint`)
 - `CHUNK_TIMEOUT_SECONDS` bailout timeout for per-transcription/chunk generation (default: `150` = 2m30s)
 
 ## 3) Health check

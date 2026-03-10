@@ -7,6 +7,8 @@ PORT="${PORT:-8000}"
 MODEL_ID="${MODEL_ID:-Qwen/Qwen3-ASR-0.6B}"
 ASR_BACKEND="${ASR_BACKEND:-vllm}"
 ENABLE_GPU="${ENABLE_GPU:-auto}"
+RESTART_POLICY="${RESTART_POLICY:-unless-stopped}"
+HF_CACHE_DIR="${HF_CACHE_DIR:-$HOME/.cache/huggingface/quick-asr-endpoint}"
 STARTUP_TIMEOUT="${STARTUP_TIMEOUT:-300}"
 POLL_INTERVAL="${POLL_INTERVAL:-2}"
 EXPECTED_IMAGE_LABEL="quick-asr-endpoint"
@@ -50,16 +52,21 @@ if [ "${ASR_BACKEND}" = "vllm" ] && [ ${#GPU_ARGS[@]} -eq 0 ]; then
   echo "Hint: set ENABLE_GPU=1 and ensure Docker NVIDIA runtime is configured."
 fi
 
+mkdir -p "${HF_CACHE_DIR}"
+
 if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
   echo "Removing existing container ${CONTAINER_NAME}"
   docker rm -f "${CONTAINER_NAME}" >/dev/null
 fi
 
-echo "Starting ${CONTAINER_NAME} on port ${PORT} (backend=${ASR_BACKEND}, gpu=${ENABLE_GPU})"
+echo "Starting ${CONTAINER_NAME} on port ${PORT} (backend=${ASR_BACKEND}, gpu=${ENABLE_GPU}, restart=${RESTART_POLICY})"
+echo "Using HF cache mount: ${HF_CACHE_DIR} -> /root/.cache/huggingface"
 CONTAINER_ID="$(docker run -d \
   --name "${CONTAINER_NAME}" \
+  --restart "${RESTART_POLICY}" \
   -e MODEL_ID="${MODEL_ID}" \
   -e ASR_BACKEND="${ASR_BACKEND}" \
+  -v "${HF_CACHE_DIR}:/root/.cache/huggingface" \
   "${GPU_ARGS[@]}" \
   -p "${PORT}:8000" \
   "${IMAGE_NAME}")"
