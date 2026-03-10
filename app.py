@@ -47,30 +47,45 @@ class BaseASREngine:
 
 class TransformersASREngine(BaseASREngine):
     def __init__(self, model_id: str = MODEL_ID):
-        model = AutoModelForSpeechSeq2Seq.from_pretrained(
-            model_id,
-            torch_dtype=TORCH_DTYPE,
-            low_cpu_mem_usage=True,
-            use_safetensors=True,
-            token=HF_TOKEN,
-            revision=MODEL_REVISION,
-            trust_remote_code=True,
-        )
-        model.to(DEVICE)
-        processor = AutoProcessor.from_pretrained(
-            model_id,
-            token=HF_TOKEN,
-            revision=MODEL_REVISION,
-            trust_remote_code=True,
-        )
-        self.pipe = pipeline(
-            task="automatic-speech-recognition",
-            model=model,
-            tokenizer=processor.tokenizer,
-            feature_extractor=processor.feature_extractor,
-            torch_dtype=TORCH_DTYPE,
-            device=0 if DEVICE == "cuda" else -1,
-        )
+        # Prefer letting `pipeline(...)` resolve the right architecture when remote code
+        # defines a custom config/model (e.g., qwen3_asr) instead of forcing Seq2Seq.
+        try:
+            self.pipe = pipeline(
+                task="automatic-speech-recognition",
+                model=model_id,
+                token=HF_TOKEN,
+                revision=MODEL_REVISION,
+                trust_remote_code=True,
+                torch_dtype=TORCH_DTYPE,
+                device=0 if DEVICE == "cuda" else -1,
+            )
+            return
+        except Exception:
+            # Fallback for environments where direct pipeline loading fails.
+            model = AutoModelForSpeechSeq2Seq.from_pretrained(
+                model_id,
+                torch_dtype=TORCH_DTYPE,
+                low_cpu_mem_usage=True,
+                use_safetensors=True,
+                token=HF_TOKEN,
+                revision=MODEL_REVISION,
+                trust_remote_code=True,
+            )
+            model.to(DEVICE)
+            processor = AutoProcessor.from_pretrained(
+                model_id,
+                token=HF_TOKEN,
+                revision=MODEL_REVISION,
+                trust_remote_code=True,
+            )
+            self.pipe = pipeline(
+                task="automatic-speech-recognition",
+                model=model,
+                tokenizer=processor.tokenizer,
+                feature_extractor=processor.feature_extractor,
+                torch_dtype=TORCH_DTYPE,
+                device=0 if DEVICE == "cuda" else -1,
+            )
 
     def transcribe_pcm16le(self, pcm_bytes: bytes, sample_rate: int = CHUNK_SAMPLE_RATE) -> str:
         if not pcm_bytes:

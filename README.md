@@ -121,7 +121,7 @@ asyncio.run(run())
 
 - `scripts/run.sh` validates the image label (`org.opencontainers.image.title=quick-asr-endpoint`) to avoid accidentally running a different application image under a reused tag.
 
-- If `/health` shows a model architecture error (for example unknown `qwen3_asr`), rebuild your image to pick up updated dependencies:
+- If `/health` shows a model architecture error (for example unknown `qwen3_asr`), rebuild your image to pick up updated dependencies. The Transformers backend now attempts direct `pipeline(...)` loading first to support custom Qwen3 ASR config classes:
 
 ```bash
 ./scripts/build.sh quick-asr-endpoint:latest
