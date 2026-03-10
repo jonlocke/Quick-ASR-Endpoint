@@ -106,7 +106,8 @@ asyncio.run(run())
 
 - Streaming endpoint performs **incremental re-transcription** on accumulated audio for partial updates.
 - The Docker image includes `git` so `TRANSFORMERS_SPEC` values like `git+https://...` install correctly.
-- Build installs `qwen-asr` before `TRANSFORMERS_SPEC`, then reinstalls `TRANSFORMERS_SPEC` last to ensure custom Qwen3 architecture support is not downgraded by transitive deps.
+- Build installs `torch`, `qwen-asr`, `TRANSFORMERS_SPEC`, and app requirements in a single pip invocation to improve cache reuse and prevent version drift between steps.
+- Docker uses a single pip install step with BuildKit pip cache mount to reduce repeated downloads across rebuilds.
 - For GPU acceleration, run container with appropriate runtime (for example `--gpus all`) and CUDA-compatible base image.
 
 

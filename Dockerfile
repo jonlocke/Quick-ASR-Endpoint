@@ -1,8 +1,9 @@
+# syntax=docker/dockerfile:1.7
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=0
 
 ARG TORCH_SPEC="torch==2.4.1"
 ARG TORCH_INDEX_URL=""
@@ -20,15 +21,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt ./
-RUN pip install --upgrade pip \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python -m pip install --upgrade pip \
     && if [ -n "${TORCH_INDEX_URL}" ]; then \
-         pip install "${TORCH_SPEC}" --index-url "${TORCH_INDEX_URL}"; \
+         python -m pip install \
+           "${TORCH_SPEC}" \
+           "${QWEN_ASR_SPEC}" \
+           "${TRANSFORMERS_SPEC}" \
+           -r requirements.txt \
+           --index-url "${TORCH_INDEX_URL}"; \
        else \
-         pip install "${TORCH_SPEC}"; \
-       fi \
-    && pip install "${QWEN_ASR_SPEC}" \
-    && pip install "${TRANSFORMERS_SPEC}" \
-    && pip install -r requirements.txt
+         python -m pip install \
+           "${TORCH_SPEC}" \
+           "${QWEN_ASR_SPEC}" \
+           "${TRANSFORMERS_SPEC}" \
+           -r requirements.txt; \
+       fi
 
 COPY app.py ./
 
