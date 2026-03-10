@@ -39,6 +39,7 @@ Optional environment variables:
 - `MODEL_REVISION` to pin a model revision/tag/commit
 - `STARTUP_TIMEOUT` seconds to wait for `/health` (default: `300`)
 - `POLL_INTERVAL` seconds between health checks (default: `2`)
+- `CHUNK_TIMEOUT_SECONDS` bailout timeout for per-transcription/chunk generation (default: `150` = 2m30s)
 
 ## 3) Health check
 
@@ -116,6 +117,7 @@ asyncio.run(run())
 - If CUDA is available, startup attempts `vllm` first; on init failure it falls back to `transformers` and exposes a warning in `/health`.
 - `/health` also includes `active_backend` to show which backend was actually initialized.
 - Transcription endpoints return `503` with error details until the model is configured correctly.
+- Streaming and batch transcriptions bail out with timeout errors if generation exceeds `CHUNK_TIMEOUT_SECONDS` (default 2m30s).
 
 
 ## Troubleshooting

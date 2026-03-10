@@ -1,3 +1,4 @@
+import asyncio
 import importlib
 import importlib.util
 import inspect
@@ -22,6 +23,7 @@ MODEL_REVISION = os.getenv("MODEL_REVISION")
 CHUNK_SAMPLE_RATE = 16000
 CHUNK_WIDTH = 2  # int16
 CHUNK_CHANNELS = 1
+CHUNK_TIMEOUT_SECONDS = float(os.getenv("CHUNK_TIMEOUT_SECONDS", "150"))
 
 
 class BaseASREngine:
@@ -200,6 +202,18 @@ def create_engine(model_id: str = MODEL_ID, backend: str = ASR_BACKEND) -> tuple
     return _try_build(backend, model_id), backend, None
 
 
+async def transcribe_with_timeout(audio_bytes: bytes, sample_rate: int) -> str:
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(asr_engine.transcribe_pcm16le, audio_bytes, sample_rate),
+            timeout=CHUNK_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError as exc:
+        raise TimeoutError(
+            f"Chunk transcription exceeded {CHUNK_TIMEOUT_SECONDS:.0f}s timeout."
+        ) from exc
+
+
 @dataclass
 class StreamState:
     chunks: List[bytes] = field(default_factory=list)
@@ -267,7 +281,12 @@ async def transcribe_file(file: UploadFile = File(...)):
 
     data = await file.read()
     try:
-        text = asr_engine.transcribe_wav(data)
+        text = await asyncio.wait_for(asyncio.to_thread(asr_engine.transcribe_wav, data), timeout=CHUNK_TIMEOUT_SECONDS)
+    except asyncio.TimeoutError:
+        return JSONResponse(
+            status_code=504,
+            content={"error": f"Transcription exceeded {CHUNK_TIMEOUT_SECONDS:.0f}s timeout."},
+        )
     except ValueError as exc:
         return JSONResponse(status_code=400, content={"error": str(exc)})
 
@@ -302,12 +321,22 @@ async def stream_transcribe(websocket: WebSocket):
                 if chunk:
                     state.append(chunk)
                     if state.should_emit_partial():
-                        partial = asr_engine.transcribe_pcm16le(state.all_audio(), state.sample_rate)
+                        try:
+                            partial = await transcribe_with_timeout(state.all_audio(), state.sample_rate)
+                        except TimeoutError as exc:
+                            await websocket.send_json({"type": "error", "message": str(exc)})
+                            await websocket.close(code=1011)
+                            return
                         await websocket.send_json({"type": "partial", "text": partial})
             elif message.get("text"):
                 command = message["text"].strip().lower()
                 if command == "end":
-                    final = asr_engine.transcribe_pcm16le(state.all_audio(), state.sample_rate)
+                    try:
+                        final = await transcribe_with_timeout(state.all_audio(), state.sample_rate)
+                    except TimeoutError as exc:
+                        await websocket.send_json({"type": "error", "message": str(exc)})
+                        await websocket.close(code=1011)
+                        return
                     await websocket.send_json({"type": "final", "text": final})
                     await websocket.close(code=1000)
                     return
