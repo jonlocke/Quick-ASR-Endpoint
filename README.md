@@ -44,6 +44,9 @@ Optional environment variables:
 - `RESTART_POLICY` Docker restart policy (default: `unless-stopped`)
 - `HF_CACHE_DIR` host path mounted into `/root/.cache/huggingface` (default: `$HOME/.cache/huggingface/quick-asr-endpoint`)
 - `CHUNK_TIMEOUT_SECONDS` bailout timeout for per-transcription/chunk generation (default: `150` = 2m30s)
+- `VLLM_GPU_MEMORY_UTILIZATION` target GPU usage for vLLM init (default: `0.75`)
+- `VLLM_MAX_MODEL_LEN` max context length hint passed to vLLM (default: `32768`)
+- `VLLM_FALLBACK_TO_TRANSFORMERS` fallback to transformers if vLLM init fails (default: `1`)
 
 ## 3) Health check
 
@@ -129,7 +132,8 @@ asyncio.run(run())
 
 ## Troubleshooting
 
-- Qwen3-ASR docs recommend the vLLM backend for best throughput; `scripts/run.sh` now defaults to `ASR_BACKEND=vllm` and can auto-enable `--gpus all` when supported.
+- Qwen3-ASR docs recommend the vLLM backend for best throughput; `scripts/run.sh` defaults to `ASR_BACKEND=vllm` and can auto-enable `--gpus all` when supported.
+- If vLLM fails with GPU memory errors (`Free memory on device ... less than desired GPU memory utilization`), lower `VLLM_GPU_MEMORY_UTILIZATION` (for example `0.6`) or set `VLLM_FALLBACK_TO_TRANSFORMERS=1` to auto-fallback.
 
 - `scripts/run.sh` validates the image label (`org.opencontainers.image.title=quick-asr-endpoint`) to avoid accidentally running a different application image under a reused tag.
 

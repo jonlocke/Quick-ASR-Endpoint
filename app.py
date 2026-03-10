@@ -24,6 +24,9 @@ CHUNK_SAMPLE_RATE = 16000
 CHUNK_WIDTH = 2  # int16
 CHUNK_CHANNELS = 1
 CHUNK_TIMEOUT_SECONDS = float(os.getenv("CHUNK_TIMEOUT_SECONDS", "150"))
+VLLM_GPU_MEMORY_UTILIZATION = float(os.getenv("VLLM_GPU_MEMORY_UTILIZATION", "0.75"))
+VLLM_MAX_MODEL_LEN = int(os.getenv("VLLM_MAX_MODEL_LEN", "32768"))
+VLLM_FALLBACK_TO_TRANSFORMERS = os.getenv("VLLM_FALLBACK_TO_TRANSFORMERS", "1").lower() in {"1", "true", "yes"}
 
 
 class BaseASREngine:
@@ -117,7 +120,21 @@ class VLLMASREngine(BaseASREngine):
             raise RuntimeError("Qwen3ASRModel.LLM was not found in qwen_asr package.")
 
         attempts = [
-            {"model": model_id, "token": HF_TOKEN, "revision": MODEL_REVISION, "device": DEVICE},
+            {
+                "model": model_id,
+                "token": HF_TOKEN,
+                "revision": MODEL_REVISION,
+                "device": DEVICE,
+                "gpu_memory_utilization": VLLM_GPU_MEMORY_UTILIZATION,
+                "max_model_len": VLLM_MAX_MODEL_LEN,
+            },
+            {
+                "model": model_id,
+                "token": HF_TOKEN,
+                "revision": MODEL_REVISION,
+                "gpu_memory_utilization": VLLM_GPU_MEMORY_UTILIZATION,
+                "max_model_len": VLLM_MAX_MODEL_LEN,
+            },
             {"model": model_id, "token": HF_TOKEN, "revision": MODEL_REVISION},
             {"model": model_id},
             {"model_name": model_id},
@@ -197,7 +214,18 @@ def create_engine(model_id: str = MODEL_ID, backend: str = ASR_BACKEND) -> tuple
     if backend == "vllm":
         usable, reason = _vllm_usable()
         if not usable:
+            if VLLM_FALLBACK_TO_TRANSFORMERS:
+                engine = _try_build("transformers", model_id)
+                return engine, "transformers", reason + " Falling back to transformers."
             raise RuntimeError(reason + " Set ASR_BACKEND=transformers or enable GPU runtime.")
+
+        try:
+            return _try_build("vllm", model_id), "vllm", None
+        except Exception as vllm_exc:
+            if VLLM_FALLBACK_TO_TRANSFORMERS:
+                engine = _try_build("transformers", model_id)
+                return engine, "transformers", f"vllm initialization failed, fell back to transformers: {vllm_exc}"
+            raise
 
     return _try_build(backend, model_id), backend, None
 
