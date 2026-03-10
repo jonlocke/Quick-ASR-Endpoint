@@ -27,14 +27,14 @@ A Dockerized FastAPI + Uvicorn service for speech-to-text with **Qwen3 ASR 0.6B*
 
 ```bash
 ./scripts/run.sh qwen-asr-api:latest qwen-asr-api
-# script waits for /health, fails with logs if startup crashes/times out
+# script waits until /health reports ready=true, fails with logs if startup crashes/times out
 ```
 
 Optional environment variables:
 
 - `PORT` (default: `8000`)
 - `MODEL_ID` (default: `Qwen/Qwen3-ASR-0.6B`)
-- `ASR_BACKEND` (`vllm` default, or `transformers`)
+- `ASR_BACKEND` (`auto` default, tries `vllm` then falls back to `transformers`)
 - `HF_TOKEN` for private/gated Hugging Face models
 - `MODEL_REVISION` to pin a model revision/tag/commit
 - `STARTUP_TIMEOUT` seconds to wait for `/health` (default: `300`)
@@ -111,6 +111,8 @@ asyncio.run(run())
 
 - The API process now stays up even if model loading fails during startup.
 - `GET /health` returns `status: degraded` and includes the model loading error when this happens.
+- In `ASR_BACKEND=auto`, startup first attempts `vllm`; if it fails, it automatically falls back to `transformers` and exposes a warning in `/health`.
+- `/health` also includes `active_backend` to show which backend was actually initialized.
 - Transcription endpoints return `503` with error details until the model is configured correctly.
 
 

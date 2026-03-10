@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 
 MODEL_ID = os.getenv("MODEL_ID", "Qwen/Qwen3-ASR-0.6B")
-ASR_BACKEND = os.getenv("ASR_BACKEND", "vllm").lower()
+ASR_BACKEND = os.getenv("ASR_BACKEND", "auto").lower()
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 TORCH_DTYPE = torch.float16 if DEVICE == "cuda" else torch.float32
 HF_TOKEN = os.getenv("HF_TOKEN")
@@ -95,15 +95,16 @@ class VLLMASREngine(BaseASREngine):
         self.model = self._build_llm(model_cls, model_id)
 
     def _build_llm(self, model_cls: Any, model_id: str) -> Any:
-        attempts = [
-            {"model": model_id, "token": HF_TOKEN, "revision": MODEL_REVISION},
-            {"model": model_id},
-            {"model_name": model_id},
-        ]
         llm_fn = getattr(model_cls, "LLM", None)
         if llm_fn is None:
             raise RuntimeError("Qwen3ASRModel.LLM was not found in qwen_asr package.")
 
+        attempts = [
+            {"model": model_id, "token": HF_TOKEN, "revision": MODEL_REVISION, "device": DEVICE},
+            {"model": model_id, "token": HF_TOKEN, "revision": MODEL_REVISION},
+            {"model": model_id},
+            {"model_name": model_id},
+        ]
         for kwargs in attempts:
             filtered_kwargs = {k: v for k, v in kwargs.items() if v is not None}
             try:
@@ -147,12 +148,23 @@ class VLLMASREngine(BaseASREngine):
         raise RuntimeError("Loaded qwen-asr backend does not expose transcribe/generate API.")
 
 
-def create_engine(model_id: str = MODEL_ID, backend: str = ASR_BACKEND) -> BaseASREngine:
+def _try_build(backend: str, model_id: str) -> BaseASREngine:
     if backend == "vllm":
         return VLLMASREngine(model_id=model_id)
     if backend == "transformers":
         return TransformersASREngine(model_id=model_id)
-    raise ValueError("Unsupported ASR_BACKEND. Use 'vllm' or 'transformers'.")
+    raise ValueError("Unsupported ASR_BACKEND. Use 'auto', 'vllm', or 'transformers'.")
+
+
+def create_engine(model_id: str = MODEL_ID, backend: str = ASR_BACKEND) -> tuple[BaseASREngine, str, Optional[str]]:
+    if backend == "auto":
+        try:
+            return _try_build("vllm", model_id), "vllm", None
+        except Exception as vllm_exc:
+            engine = _try_build("transformers", model_id)
+            return engine, "transformers", f"vllm initialization failed, fell back to transformers: {vllm_exc}"
+
+    return _try_build(backend, model_id), backend, None
 
 
 @dataclass
@@ -174,16 +186,20 @@ class StreamState:
 app = FastAPI(title="Qwen ASR Streaming API")
 asr_engine: Optional[BaseASREngine] = None
 startup_error: Optional[str] = None
+startup_warning: Optional[str] = None
+active_backend: Optional[str] = None
 
 
 @app.on_event("startup")
 def startup_event() -> None:
-    global asr_engine, startup_error
+    global asr_engine, startup_error, startup_warning, active_backend
     try:
-        asr_engine = create_engine()
+        asr_engine, active_backend, startup_warning = create_engine()
         startup_error = None
     except Exception as exc:
         asr_engine = None
+        active_backend = None
+        startup_warning = None
         startup_error = str(exc)
 
 
@@ -194,12 +210,21 @@ def health() -> dict:
             "status": "degraded",
             "model": MODEL_ID,
             "backend": ASR_BACKEND,
+            "active_backend": active_backend,
             "device": DEVICE,
             "ready": False,
             "error": startup_error,
             "hint": "Set ASR_BACKEND=transformers or install qwen-asr[vllm], and verify MODEL_ID/HF_TOKEN.",
         }
-    return {"status": "ok", "model": MODEL_ID, "backend": ASR_BACKEND, "device": DEVICE, "ready": True}
+    return {
+        "status": "ok",
+        "model": MODEL_ID,
+        "backend": ASR_BACKEND,
+        "active_backend": active_backend,
+        "device": DEVICE,
+        "ready": True,
+        "warning": startup_warning,
+    }
 
 
 @app.post("/v1/transcribe")
@@ -231,7 +256,7 @@ async def stream_transcribe(websocket: WebSocket):
             "audio_format": "pcm16le",
             "sample_rate": CHUNK_SAMPLE_RATE,
             "channels": CHUNK_CHANNELS,
-            "backend": ASR_BACKEND,
+            "backend": active_backend,
             "end_signal": "send text message: end",
         }
     )
