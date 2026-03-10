@@ -5,7 +5,8 @@ IMAGE_NAME="${1:-quick-asr-endpoint:latest}"
 CONTAINER_NAME="${2:-quick-asr-endpoint}"
 PORT="${PORT:-8000}"
 MODEL_ID="${MODEL_ID:-Qwen/Qwen3-ASR-0.6B}"
-ASR_BACKEND="${ASR_BACKEND:-auto}"
+ASR_BACKEND="${ASR_BACKEND:-vllm}"
+ENABLE_GPU="${ENABLE_GPU:-auto}"
 STARTUP_TIMEOUT="${STARTUP_TIMEOUT:-300}"
 POLL_INTERVAL="${POLL_INTERVAL:-2}"
 EXPECTED_IMAGE_LABEL="quick-asr-endpoint"
@@ -37,16 +38,29 @@ if [ "${IMAGE_LABEL}" != "${EXPECTED_IMAGE_LABEL}" ]; then
   exit 1
 fi
 
+GPU_ARGS=()
+if [ "${ENABLE_GPU}" = "1" ] || [ "${ENABLE_GPU}" = "true" ]; then
+  GPU_ARGS=(--gpus all)
+elif [ "${ENABLE_GPU}" = "auto" ] && command -v nvidia-smi >/dev/null 2>&1; then
+  GPU_ARGS=(--gpus all)
+fi
+
+if [ "${ASR_BACKEND}" = "vllm" ] && [ ${#GPU_ARGS[@]} -eq 0 ]; then
+  echo "Warning: ASR_BACKEND=vllm but GPU runtime is not enabled; startup may fail."
+  echo "Hint: set ENABLE_GPU=1 and ensure Docker NVIDIA runtime is configured."
+fi
+
 if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
   echo "Removing existing container ${CONTAINER_NAME}"
   docker rm -f "${CONTAINER_NAME}" >/dev/null
 fi
 
-echo "Starting ${CONTAINER_NAME} on port ${PORT}"
+echo "Starting ${CONTAINER_NAME} on port ${PORT} (backend=${ASR_BACKEND}, gpu=${ENABLE_GPU})"
 CONTAINER_ID="$(docker run -d \
   --name "${CONTAINER_NAME}" \
   -e MODEL_ID="${MODEL_ID}" \
   -e ASR_BACKEND="${ASR_BACKEND}" \
+  "${GPU_ARGS[@]}" \
   -p "${PORT}:8000" \
   "${IMAGE_NAME}")"
 

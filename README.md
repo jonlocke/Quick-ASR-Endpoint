@@ -34,11 +34,12 @@ Optional environment variables:
 
 - `PORT` (default: `8000`)
 - `MODEL_ID` (default: `Qwen/Qwen3-ASR-0.6B`)
-- `ASR_BACKEND` (`auto` default, uses `transformers` when CUDA is unavailable; otherwise tries `vllm` first and falls back to `transformers` on init errors)
+- `ASR_BACKEND` (`vllm` default; set `transformers` explicitly if GPU runtime is unavailable)
 - `HF_TOKEN` for private/gated Hugging Face models
 - `MODEL_REVISION` to pin a model revision/tag/commit
 - `STARTUP_TIMEOUT` seconds to wait for `/health` (default: `300`)
 - `POLL_INTERVAL` seconds between health checks (default: `2`)
+- `ENABLE_GPU` (`auto` default; uses `--gpus all` when `nvidia-smi` is present. Set `1` to force GPU, `0` to disable.)
 - `CHUNK_TIMEOUT_SECONDS` bailout timeout for per-transcription/chunk generation (default: `150` = 2m30s)
 
 ## 3) Health check
@@ -113,14 +114,17 @@ asyncio.run(run())
 
 - The API process now stays up even if model loading fails during startup.
 - `GET /health` returns `status: degraded` and includes the model loading error when this happens.
-- In `ASR_BACKEND=auto`, if CUDA is unavailable the service skips `vllm` and starts directly with `transformers` (warning shown in `/health`).
-- If CUDA is available, startup attempts `vllm` first; on init failure it falls back to `transformers` and exposes a warning in `/health`.
+- Default backend is `ASR_BACKEND=vllm` (recommended by Qwen3-ASR docs for throughput).
+- You can set `ASR_BACKEND=auto` to try `vllm` first and automatically fall back to `transformers` when appropriate.
+- If GPU runtime is unavailable, use `ASR_BACKEND=transformers` explicitly.
 - `/health` also includes `active_backend` to show which backend was actually initialized.
 - Transcription endpoints return `503` with error details until the model is configured correctly.
 - Streaming and batch transcriptions bail out with timeout errors if generation exceeds `CHUNK_TIMEOUT_SECONDS` (default 2m30s).
 
 
 ## Troubleshooting
+
+- Qwen3-ASR docs recommend the vLLM backend for best throughput; `scripts/run.sh` now defaults to `ASR_BACKEND=vllm` and can auto-enable `--gpus all` when supported.
 
 - `scripts/run.sh` validates the image label (`org.opencontainers.image.title=quick-asr-endpoint`) to avoid accidentally running a different application image under a reused tag.
 
@@ -140,7 +144,7 @@ asyncio.run(run())
 
 ## Use vLLM backend
 
-The service now defaults to `ASR_BACKEND=auto` (tries `vllm`, then `transformers`) and installs `qwen-asr[vllm]` in Docker builds.
+The service defaults to `ASR_BACKEND=vllm` and installs `qwen-asr[vllm]` in Docker builds.
 
 If needed, you can force Transformers backend at runtime:
 

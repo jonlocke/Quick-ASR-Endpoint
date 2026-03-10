@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 
 MODEL_ID = os.getenv("MODEL_ID", "Qwen/Qwen3-ASR-0.6B")
-ASR_BACKEND = os.getenv("ASR_BACKEND", "auto").lower()
+ASR_BACKEND = os.getenv("ASR_BACKEND", "vllm").lower()
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 TORCH_DTYPE = torch.float16 if DEVICE == "cuda" else torch.float32
 HF_TOKEN = os.getenv("HF_TOKEN")
